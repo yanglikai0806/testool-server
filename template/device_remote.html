@@ -1,0 +1,319 @@
+<html>
+<head>
+    {% block head %}
+    <link rel="stylesheet" type="text/css" href="/statics/libs/css/buttons.css">
+    <link rel="stylesheet" type="text/css" href="/statics/libs/fontawesome/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.select/1.12.2/css/bootstrap-select.min.css">
+    <link rel="stylesheet" type="text/css" href="{{static_url('style.css')}}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jstree@3.3.4/dist/themes/default/style.min.css">
+    {% end %}
+
+    {% block title %}{% end %}
+    <style type="text/css">
+        {% block style %}
+        .left_block {
+            float: left;
+            width: 18%;
+        }
+        .dump-screen {
+            float: right;
+            width: 70%;
+        }
+        .my-frame {
+            float: right;
+            width: 75%;
+            height: 1px;
+        }
+
+        button:active {
+          background-color: #4cade5;
+          box-shadow: 0 2px #999;
+          transform: translateY(4px);
+        }
+        {%end%}
+    </style>
+</head>
+<body>
+{% extends "index.html" %}
+{% block body %}
+<div class="row">
+<div class="am-u-sm-12 am-u-md-12 am-u-lg-12">
+    <div class="widget am-cf">
+       <div class="widget-body  widget-body-lg am-fr">
+           <div class="left_block">
+               <div class="device-screen" id="screen_div">
+               </div>
+               <div class="device-key" style="margin-top: 5px;display: inline-flex">
+                <button style="width: 14%;margin-left: 2%" onclick="clickBtn('power')"><img src="/statics/assets/icon/power.png" style="width: 50%"></button>
+                <button style="width: 14%;margin-left: 2%" onclick="clickBtn('recent')"><img src="/statics/assets/icon/recent.png" style="width: 50%"></button>
+                <button style="width: 14%;margin-left: 2%" onclick="clickBtn('home')"><img src="/statics/assets/icon/home.png" style="width: 50%"></button>
+                <button style="width: 14%;margin-left: 2%" onclick="clickBtn('back')"><img src="/statics/assets/icon/back.png" style="width: 50%"></button>
+                <button style="width: 14%;margin-left: 2%" onclick="clickBtn('unlock')"><img src="/statics/assets/icon/unlock.png" style="width: 50%"></button>
+                <button style="width: 14%;margin-left: 2%" onclick="dumpAction()"><img src="/statics/assets/icon/dump.png" style="width: 50%"></button>
+               </div>
+
+               <div class="input-box">
+                    <input class="input-text" type="text" id="apk-url" value="输入安装APK url"
+                    onfocus="if(value=='输入安装APK url')value=''"
+                    onblur="if(!value)value='输入安装APK url'">
+                    <img src="/statics/assets/icon/install.png" class="input-icon" id="install" title="安装应用">
+               </div>
+               <div class="input-box" style="height: 60px">
+                    <input class="input-text" type="text" id="activity" value="com.kevin.testool/.activity.MainActivity"
+                    onfocus="if(value=='com.kevin.testool/.activity.MainActivity')value=''"
+                    onblur="if(!value)value='com.kevin.testool/.activity.MainActivity'">
+                   <div style="margin-left: 1%; width: 28px">
+                    <img src="/statics/assets/icon/arrow_right.png" class="input-icon" id="start-activity" title="start activity">
+                    <img src="/statics/assets/icon/arrow_left.png" class="input-icon" id="get-activity" title="get activity">
+                   </div>
+               </div>
+
+           </div>
+           <div class="my-frame">
+           </div>
+           <div class="dump-screen"></div>
+
+       </div>
+     </div>
+</div>
+</div>
+<script src="/statics/ace/ace.js"></script>
+<script src="/statics/ace/mode-python.js"></script>
+<script src="{{static_url('libs/vue-2.5.16/vue.js')}}"></script>
+<script src="{{static_url('bootstrap/js/bootstrap.min.js')}}"></script>
+<script src="{{static_url('js/common.js')}}"></script>
+<script src="{{static_url('js/jstree.min.js')}}"></script>
+<script src="{{static_url('js/index2.js')}}"></script>
+<script>
+    var ip = getQueryString("ip");
+    var device_id = getQueryString("device_id");
+    var websocket;
+    var base64Str;
+    var imgWidth = 'width:100%';
+    var wsurl = "ws:" + ip + ":9999";
+    var startPoint;
+    var endPoint;
+    var startTime;
+    var endtTime;
+    var isActive = true;
+    var isConnecting = false;
+    let timer = null;
+    $(function() {
+            startWebSocket();
+            $("#screen_div").mousedown(function () {
+                startPoint = getRelativePoint();
+                startTime = new Date().getTime();
+            });
+            $("#screen_div").mouseup(function () {
+                endPoint = getRelativePoint();
+                endtTime = new Date().getTime();
+                if (startPoint[0] > 1 || startPoint[1] > 1 ){
+
+                } else {
+                    let action = parseAction(startPoint[0], startPoint[1], endPoint[0], endPoint[1], endtTime - startTime);
+                    send("action", action);
+                }
+            });
+            $("#install").on("click", function () {
+                let apk_url = $("#apk-url").val();
+                if (apk_url.length > 0 && apk_url !== "输入安装APK url"){
+                    send("action", {"install":apk_url});
+                }
+            });
+            $("#start-activity").on("click", function () {
+                let activity = $("#activity").val();
+                if (activity.length > 0 && activity !== "activity"){
+                    send("action", {"activity":activity});
+                }
+            });
+            $("#get-activity").on("click", function () {
+                send("activity", "");
+            });
+            window.onmousemove = function(){
+                clearTimeout(timer);
+                if (!isActive && !isConnecting) {
+                    // console.log("鼠标移动")
+                    startWebSocket();
+                }
+                timer = setTimeout(function(){ //鼠标静止20s后连接关闭
+                    websocket.close();
+                },20000);
+            }
+        });
+
+    /*
+    窗口激活状态判断
+    */
+    window.onblur = function(e){
+            // websocket.close();
+	        console.log("窗口处于未激活状态！")
+    }
+    window.onfocus = function(e){
+            startWebSocket();
+            console.log("窗口处于激活状态！")
+    }
+
+    /*
+    开始websocket服务
+    */
+    function startWebSocket() {
+        //连接Socket的URL地址
+        if (window.WebSocket) { //判断浏览器是否支持websocket
+            websocket = new WebSocket(wsurl);
+            console.log("======websocket开始连接======")
+            isConnecting = true;
+            websocket.onopen = function(event) {
+                console.log("======连接成功======")
+                isActive = true;
+                isConnecting = false;
+                send("screen", "");
+                //恢复界面色彩
+                $("#screen_div").css({ "-webkit-filter": "","-moz-filter": "","-ms-filter": "","-o-filter": "","filter": ""})
+                //更新设备状态为占用
+                let content = JSON.stringify(
+                {device_id:device_id, device_ip:ip, idle:"false"}, null, 2
+                );
+                $.post("/test/device_state", content, function(data, status){
+                    if(status === "success"){
+                        // console.log(data);
+                    } else {
+                        alert("Ajax 失败");
+                    }
+                })
+
+            }
+            websocket.onclose = function(event){
+                //更新设备状态为空闲
+                let content = JSON.stringify(
+                {device_id:device_id, device_ip:ip, idle:"true"}, null, 2
+                );
+                $.post("/test/device_state", content, function(data, status){
+                    if(status === "success"){
+                        // console.log(data);
+                    } else {
+                        alert("Ajax 失败");
+                    }
+                })
+                // 界面置灰
+                $("#screen_div").css({ "-webkit-filter": "grayscale(100%)","-moz-filter": "grayscale(100%)","-ms-filter": "grayscale(100%)","-o-filter": "grayscale(100%)","filter": "grayscale(100%)","filter": "gray"})
+                isActive = false;
+                console.log("******websocket服务关闭*******");
+            }
+            websocket.onmessage = function(event) {
+                //onmessage事件，接收消息
+                let msg = event.data;
+                // console.log("接受消息==========");
+                // let msg = JSON.parse(event.data);
+                if (!isActive){
+                    isActive = true;
+                    $("#screen_div").css({ "-webkit-filter": "","-moz-filter": "","-ms-filter": "","-o-filter": "","filter": ""})
+                }
+                if (msg.startsWith("*start*")) {
+                    base64Str = "";
+                    if (msg.endsWith("landscape")){
+                        imgWidth = 'width:140%';
+                    } else {
+                        imgWidth = 'width:100%';
+                    }
+                } else if (msg == "*end*") {
+                    if (base64Str.length > 100) {
+                        $("#screen_div").html(`<div style=${imgWidth}><img onmouseover="this.style.cursor='pointer'" id="screen_shot" draggable="false" class="device-screen" src='data:image/png;base64,${base64Str}' style="width: 100%; border: 5px solid rgb(0, 0, 0);border-radius: 20px "></div>`)
+                    }
+                    send("screen", "");
+
+                } else if (msg.startsWith("*pause*")) {
+                    send("screen", "");
+                } else if (msg === "*dump_finish*"){
+                    $(".dump-screen").load("/test/device_dump?device_id=" + device_id)
+                } else if (msg.startsWith("*activity*")) {
+                    $("#activity").val(msg.substring(10));
+
+                }else {
+                    base64Str += msg;
+                }
+            }
+        } else {
+            alert("当前浏览器不支持websocket");
+        }
+    }
+
+    /*
+    websocket消息发送
+    */
+    function send(mode, param) {
+        let msg = {mode: mode, param:param};
+        if (websocket.readyState == 1) { //判断连接是否为open状态
+            websocket.send(JSON.stringify(msg));
+            console.log("发送消息："+JSON.stringify(msg));
+        }
+    }
+
+    /*
+    计算相对坐标
+     */
+    function getRelativePoint(){
+            let screen_div = document.getElementById("screen_shot").getBoundingClientRect();
+            let left = screen_div.left;
+            let top = screen_div.top;
+            let right = screen_div.right;
+            let bottom = screen_div.bottom;
+            let x=window.event.clientX;//取得横坐标
+            let y=window.event.clientY;//取得纵坐标
+            let width = right - left;
+            let height = bottom - top;
+            let relative_x = ((x - left)/width).toFixed(2);
+            let relative_y = ((y - top)/height).toFixed(2);
+            return [relative_x, relative_y]
+        }
+    /*
+    解析操作类型
+     */
+    function parseAction(sx, sy, ex, ey, duration) {
+            if (Math.abs(sx-ex) < 0.01 && Math.abs(sy-ey) < 0.01){
+                if (duration > 1500){
+                    return {"click":[sx, sy], "long": duration}
+                } else {
+                    return {"click": [sx, sy]}
+                }
+            } else {
+                return {"swipe":[sx, sy, ex, ey, duration]}
+            }
+
+    }
+    /*
+    解析界面
+     */
+    function dumpAction() {
+        let ht = $(".left_block").outerHeight();
+        if (ht < 500){
+            ht = 700
+        }
+        $(".dump-screen").html('<img style="text-align: center; margin: auto" src="/statics/loading.svg">')
+        $(".dump-screen").css({"height": ht + "px", "border":"3px solid #000", "display": "flex", "justify-content:center":"center", "align-items":"center"});
+
+         send("dump","");
+    }
+
+    /*
+    按键操作
+     */
+    function clickBtn(key) {
+            if (key === "unlock"){
+                send("action", {"unlock": "0000"});
+            } else {
+                send("action", {"press": key});
+            }
+    }
+
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null)
+            return unescape(r[2]);
+        return null;
+}
+</script>
+{% end %}
+</body>
+</html>
+

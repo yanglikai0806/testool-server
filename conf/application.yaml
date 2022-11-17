@@ -1,0 +1,10 @@
+# 在local环境运行
+local:  
+  port: 8566
+  host: 0.0.0.0
+  mongo_url: mongodb://127.0.0.1:27017
+# 在线上环境运行
+prod:
+  port: 8666
+  host: 0.0.0.0
+  mongo_url: mongodb://
