@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>测试报告</title>
+    <link rel="stylesheet" href="/statics/assets/css/amazeui.min.css" />
+    <link rel="stylesheet" href="/statics/assets/css/table.css">
+    <script src="/statics/assets/js/jquery.min.js"></script>
+    <script src="/statics/assets/js/table.js"></script>
+    <style>
+        .report_glance {
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+        .report_glance span {
+            font-size: 12px;
+        }
+        .show_detail {
+            display: flex;
+            justify-content: center;
+        }
+                button {
+            /*height: 28px;*/
+            /*width: 50px;*/
+            color: white;
+            outline: none;
+            border:none;
+            background-color: #4cade5;
+            border-radius: 10px;
+            box-shadow: 0 3px #999;
+        }
+
+        button:active {
+          background-color: #4cade5;
+          box-shadow: 0 2px #999;
+          transform: translateY(2px);
+        }
+        /*选择框样式*/
+        select{
+            border: solid 1px #4cade5;
+            /*appearance:none;*/
+            border-radius: 3px;
+            /*-moz-appearance:none;*/
+            /*-webkit-appearance:none;*/
+        }
+        /*输入框样式*/
+        input {
+            border: solid 1px #4cade5;
+            /*appearance:none;*/
+            border-radius: 3px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div style="margin: 10px 1px 1px 4px">
+        <label style="font-size: 14px; margin-left: 3px">历史报告:</label>
+        <select id="date_selector" style="font-size: 14px; width: 180px">
+            {% for item in date_list%}
+            <option>{{item}}</option>
+            {% end%}
+        </select>&nbsp;&nbsp;&nbsp;
+        <button id="update_report" style="font-size: 11px">点击查看</button>
+        <div class="report_glance">
+        </div>
+        <div style="margin: 10px 1px 1px 4px; font-size: 14px">
+            <label>显示模式:</label>
+            <select id="display_selector" style="font-size: 14px; width: 180px">
+                <option value="0">显示全部用例</option>
+                <option value="1">显示有失败结果的用例</option>
+                <option value="2">只显示全部失败的用例</option>
+                <option value="3">只显示未被执行的用例</option>
+                <option value="4">显示智能推荐的用例</option>
+            </select>
+            <select id="display_selector2">
+                <option value="0">所有问题</option>
+                <option value="1">新增问题</option>
+                <option value="2">已知问题</option>
+                <option value="3">忽略问题</option>
+                <option value="4">用例问题</option>
+                <option value="5">其他问题</option>
+            </select>
+            <label id="select_num" style="margin-left: 10px"></label>
+        </div>
+    </div>
+    <div class="fixed-table-box row-col-fixed">
+        <!-- 表头 start -->
+        <div class="fixed-table_header-wraper">
+            <table class="fixed-table_header" cellspacing="0" cellpadding="0">
+                <thead>
+                    <tr>
+                        <th class="w-100" data-fixed="true">
+                            <div class="table-cell">CASE_ID</div>
+                        </th>
+                        {% for dv in device_list%}
+                        {% set device=dv%}
+                        {% set dv_info = task_result_info.get(device)%}
+                        <th style="width:400px; height: 30px">
+                            <div class="show-title" title="{{ dv_info }}">{{dv}}</div>
+                        </th>
+                        {% end %}
+<!--                        <th class="w-100" data-fixed="true" data-direction="right">-->
+<!--                            <div class="table-cell">操作</div>-->
+<!--                        </th>-->
+                    </tr>
+
+                </thead>
+            </table>
+        </div>
+        <!-- 表头 end -->
+        <!-- 表格内容 start -->
+        <div class="fixed-table_body-wraper">
+            <table class="fixed-table_body" cellspacing="0" cellpadding="0" id="table-middle">
+                <tbody>
+                    <!-- 中间表格内容 -->
+                </tbody>
+            </table>
+        </div>
+        <!-- 表格内容 end -->
+
+        <!-- 固定列 start -->
+        <div id="fixed_left" class="fixed-table_fixed fixed-table_fixed-left">
+            <div class="fixed-table_header-wraper">
+                <table class="fixed-table_header" cellspacing="0" cellpadding="0">
+                    <thead>
+                        <tr>
+                            <th class="w-100">
+                                <div class="table-cell">CASE_ID</div>
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div class="fixed-table_body-wraper">
+                <table class="fixed-table_body" cellspacing="0" cellpadding="0">
+                    <tbody>
+                        <!-- 第一个固定列 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<!--        <div id="operate" class="fixed-table_fixed fixed-table_fixed-right" style="right: 1px;">-->
+<!--            <div id="operate1" class="fixed-table_header-wraper">-->
+<!--                <table class="fixed-table_header" cellspacing="0" cellpadding="0">-->
+<!--                    <thead>-->
+<!--                        <tr>-->
+<!--                            <th class="w-100">-->
+<!--                                <div class="table-cell">操作</div>-->
+<!--                            </th>-->
+<!--                        </tr>-->
+<!--                    </thead>-->
+<!--                </table>-->
+<!--            </div>-->
+
+<!--            <div class="fixed-table_body-wraper" style="margin-top: 41px;">-->
+<!--                <table class="fixed-table_body" cellspacing="0" cellpadding="0">-->
+<!--                    <tbody>-->
+<!--                        &lt;!&ndash; 固定列的删除和操作 &ndash;&gt;-->
+<!--                    </tbody>-->
+<!--                </table>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        &lt;!&ndash; 固定列 end &ndash;&gt;-->
+<!--    </div>-->
+    <div class="fixed-table-box_fixed-right-patch" style="width: 0px; height: 39px;"></div>
+
+    <script>
+        var device_lst = {% raw device_list %}
+        var case_id_lst = {% raw case_id_list%}
+        var result_data = {% raw task_result_data %}
+        var date_lst = {% raw date_list %}
+        var pass_num = 0; // pass用例数
+        var test_sum = 0; // 测试用例总数
+        var un_test_num = 0; // 未测试用例数
+        var task_id = getQueryString("task_id");
+        var task_date = getQueryString("task_date");
+            if (task_date === null){
+                task_date = date_lst[0];
+            }
+
+        if (device_lst.length > 3){
+            $("body").css("width", (device_lst.length * 400 + 200) + "px")
+        }
+        //初始化FixedTable
+        $(".fixed-table-box").fixedTable();
+        $(".fixed-table-box").addRow(function () {
+            var html = '';
+            for (let j in case_id_lst) {
+                let case_id = case_id_lst[j];
+                html += getRowHtml(case_id);
+            }
+            return html;
+        });
+        let tested_num = test_sum-un_test_num;
+        $(".report_glance").html(`<span> 通过率：(${pass_num}/${tested_num}) = ${(pass_num*100/tested_num).toFixed(2)} %</span><br>
+                                  <span>完成率：(${tested_num}/${test_sum}) = ${(tested_num*100/test_sum).toFixed(2)} %</span>`)
+
+        function getRowHtml(case_id) {
+            var html = '';
+            html += '<tr>';
+            html += `    <td class="w-100 ${case_id}" id="case_id"><div>` + case_id+ `</div></td>`;
+            for (let i in device_lst) {
+                let device = device_lst[i];
+                let test_case_info;
+                test_sum += 1;
+                try{
+                    test_case_info = result_data[device][case_id];
+                    let test_log = test_case_info["test_log"];
+                    // console.log(test_case_info);
+                    let test_result = test_case_info["test_result"]
+                    let data_id = test_case_info["id"]
+                    if (test_result.startsWith("pass")){
+                        pass_num += 1
+                        html += `    <td style="width:400px"><div class="${device} show_detail" style="font-size: 14px; color: green">` + test_result + `</div><div class="test_log" id="${data_id}" style="text-align: left;background: white;display: none"></div></td>`;
+                    } else if (test_result.startsWith("fail")) {
+                        html += `    <td style="width:400px"><div class="${device} show_detail" style="font-size: 14px; color: red">` + test_result + `</div><div class="test_log" id="${data_id}" style="text-align: left;background: white;display: none"></div></td>`;
+                    } else {
+                        un_test_num += 1;
+                        html += `    <td style="width:400px"><div class="${device} show_detail" style="font-size: 14px; color: red">` + test_result + `</div><div class="test_log" id="${data_id}" style="text-align: left;background: white;display: none"></div></td>`;
+                    }
+                } catch (e) {
+                    un_test_num += 1;
+                    html += `    <td style="width:400px"><div style="font-size: 14px; color: dimgrey">None</div></td>`;
+                }
+
+            }
+            // html += '    <td class="w-100" ><a id="show_detail" href="#" >' +
+            //         '        详情</a></td>';
+            html += '</tr>';
+            // }
+            return html;
+        }
+
+    $("#table-middle tbody").on("click", "tr td .show_detail",function () {
+        let target = $(this).next();
+        let tr = target.parent().parent();
+        let case_id_val = tr.children("#case_id").children("div").text();
+        let fixed_left = $("#fixed_left").find("#case_id");
+        let displayState =  target.css("display");
+        if (displayState != 'block') {
+            let class_val = $(this).attr("class").split(" ");
+            let device = null;
+            if (class_val != null){
+                [device] = class_val;
+            }
+            $.get("/test/task_plane?task_id=" + task_id + "&task_date=" + task_date + "&device_id=" + device + "&case_id="+case_id_val, function (data, status) {
+                if (status === "success") {
+                    var res = JSON.parse(data);
+                    let test_log = res["test_log"];
+                    let img = res["img"];
+                    let result_mark = res["result_mark"];
+                    let result_note = res["result_note"];
+                    if (img !== ""){
+                        //显示测试截图、录屏
+                        let img_url = "http://biu.ai.srv/statics/report/alarm_file/"+img
+                        if (img_url.endsWith("mp4")){
+                            test_log = test_log + `<video src=${img_url} style="width: 200px" controls="controls"></video>`
+                        } else {
+                            test_log = test_log + `<img src=${img_url} style="width: 200px">`
+                        }
+                    }
+                    let mark_div =
+                        `<div style="background-color: #f8f8f8; margin: 5px 2px">
+                            <label style="margin-top: 5px">问题类型：</label>
+                            <select id="mark_select" style="width: 100%">`
+
+                    let mark_div1 = `<option selected>${result_mark}</option>`;
+                    let arr = ["新增问题", "已知问题", "忽略问题", "用例问题", "其他问题"];
+                    for (const item of arr){
+                        if (item === result_mark){
+                            mark_div1 += `<option selected>${item}</option>`
+                        } else {
+                            mark_div1 += `<option>${item}</option>`
+                        }
+                    }
+                    let mark_div2 = `</select>
+                            <label>问题说明：</label></br>
+                            <input id="mark_desc" type="text" style="width: 100%; margin-bottom: 5px" placeholder="请填写问题描述详情" value="${result_note}">
+                            <button class="mark_submit" onclick="submitMark(this)">提交</button>
+                         </div>
+                         `
+                    target.html(mark_div + mark_div1 + mark_div2 + '<pre>'+test_log+'</pre>');
+                    target.css("display", "block");
+                    // 左侧固定列与表格联动
+                    fixed_left.each(function (index,item) {
+                        if ($(item).text() == case_id_val){
+                            $(item).css("height", tr.css("height"))
+                        }
+                    })
+                    // $(".mark_submit").on("click", function () {
+                    //     let mark_txt = $(this).prevAll("#mark_select").val();
+                    //     let note_txt = $(this).prevAll("input").val();
+                    //     let data_id = $(this).parent().parent().attr("id");
+                    //     let content = JSON.stringify(
+                    //     {task_id:task_id, test_date:task_date, data:[{id: data_id,case_id:case_id_val,result_mark:mark_txt, result_note:note_txt}]}, null, 2
+                    //         );
+                    //     // console.log(content);
+                    //     $.post("/test/task_engine", content, function (data, status) {
+                    //         if (status == "success") {
+                    //             let msg = JSON.parse(data);
+                    //             if (msg["code"] == 200){
+                    //                 alert(msg["desc"]);
+                    //             } else {
+                    //                alert("标注内容提交失败");
+                    //             }
+                    //         } else {
+                    //             alert("Ajax 失败");
+                    //         }
+                    //     })
+                    //
+                    // })
+                }})
+            // target.css("display", "block");
+        } else {
+            target.css("display", "none");
+            // 左侧固定列与表格联动
+            fixed_left.each(function (index,item) {
+                if ($(item).text() == case_id_val){
+                    $(item).css("height", tr.css("height"))
+                }
+            })
+        }
+    })
+
+        $("#update_report").click(function () {
+            let report_date = $("#date_selector").val();
+            let task_id = getQueryString("task_id")
+            window.open("?task_id="+task_id+"&task_date=" + report_date)
+        })
+
+        // $("input[type='checkbox']").change(function () {
+        //     let isChecked = $(this).is(':checked');
+        //     if (isChecked){
+        //         $("tr").each(function (index, elem) {
+        //             let txt = $(elem).find(".show_detail").text();
+        //             if (txt.indexOf("fail") == -1){
+        //                 $(elem).css("display", "none")
+        //             }
+        //         })
+        //     } else {
+        //         $("tr").each(function (index, elem) {
+        //             $(elem).css("display", "block")
+        //         })
+        //     }
+        // })
+        $("#display_selector, #display_selector2").change(function () {
+            let display_mode = $("#display_selector").val(); // 0:显示全部，1：显示有失败的， 2：显示全部失败的, 3 显示未执行用例
+            let display_mode2 = $("#display_selector2").val(); // 0:所有问题，1：新增问题， 2：已知问题, 3 忽略问题, 4, 用例问题，5 其他问题
+            let item_num = 0;
+            let isDisplay = "block";
+            $("#table-middle tbody tr").each(function (index, elem) {
+                let case_id = $(elem).children("#case_id").text();
+                let txt = $(elem).find(".show_detail").text();
+                if (display_mode == 1) {
+                    if (txt.indexOf("fail") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                        item_num += 1;
+                    }
+                }
+                if (display_mode == 2){
+                    if (txt.indexOf("fail") >= 0 && txt.indexOf("pass") == -1 && txt.indexOf("None") == -1) {
+                        isDisplay = "block";
+                        item_num += 1;
+                    } else {
+                         isDisplay = "none";
+                    }
+                }
+                if (display_mode == 3){
+                    if (txt.indexOf("pass") == -1 && txt.indexOf("fail") == -1) {
+                        isDisplay = "block";
+                        item_num += 1;
+                    } else {
+                         isDisplay = "none";
+                    }
+                }
+                if (display_mode == 0){
+                    isDisplay = "block";
+                    item_num += 1;
+                }
+                // 二级选择过滤
+                if (display_mode2 == 1){
+                    if (txt.indexOf("新增问题") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                    }
+                }
+
+                if (display_mode2 == 2){
+                    if (txt.indexOf("已知问题") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                    }
+                }
+
+                if (display_mode2 == 3){
+                    if (txt.indexOf("忽略问题") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                    }
+                }
+
+                if (display_mode2 == 4){
+                    if (txt.indexOf("用例问题") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                    }
+                }
+
+                if (display_mode2 == 5){
+                    if (txt.indexOf("其他问题") == -1) {
+                        isDisplay = "none";
+                    } else {
+                        isDisplay = "block";
+                    }
+                }
+                // if (display_mode2 == 0){
+                //     isDisplay = "block";
+                // }
+
+
+                $(elem).css("display", isDisplay);
+                $("#fixed_left ."+case_id).css("display", isDisplay);
+            })
+            $("#select_num").text(item_num);
+        })
+
+    function submitMark(elem){
+            let mark_txt = $(elem).prevAll("#mark_select").val();
+            let note_txt = $(elem).prevAll("input").val();
+            let data_id = $(elem).parent().parent().attr("id");
+            let case_id = $(elem).parent().parent().parent().prevAll("#case_id").children("div").text();
+            let content = JSON.stringify(
+            {task_id:task_id, test_date:task_date, data:[{id: data_id,case_id:case_id,result_mark:mark_txt, result_note:note_txt}]}, null, 2
+                );
+            console.log(content);
+            $.post("/test/task_engine", content, function (data, status) {
+                if (status == "success") {
+                    let msg = JSON.parse(data);
+                    if (msg["code"] == 200){
+                        alert(msg["desc"]);
+                    } else {
+                       alert("标注内容提交失败");
+                    }
+                } else {
+                    alert("Ajax 失败");
+                }
+            })
+    }
+    /*
+    * 获取问号传参过来的数据
+    * name为参数名称
+    * 返回参数值（Value）
+    */
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null)
+            return unescape(r[2]);
+        return null;
+}
+    </script>
+</body>
+
+</html>

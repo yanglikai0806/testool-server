@@ -36,7 +36,7 @@ class TaskPlan(BaseHandler):
         get_task_info = self.get_query_argument("get_task_info", "")  # get_task_info不为空时，返回任务详情信息
         if add_job:  # 激活已执行的自动任务，用于重启服务时初始化
             self.add_jobs()
-            self.write(response({"code": 200, "desc": "激活自动任务"}))
+            self.write(response(code=200, desc="激活自动任务"))
             return
         if task_id:
             task_date_list = self.get_task_date(task_id)
@@ -45,13 +45,14 @@ class TaskPlan(BaseHandler):
             if all([task_id, task_date, case_id, device_id]):
                 try:
                     test_log, img, result_mark, result_note = self.get_test_case_log(task_id, task_date, task_date_prev, device_id, case_id)
-                    self.write(response({"test_log": test_log, "img": img, "result_mark": result_mark, "result_note": result_note}))
+                    self.write(response(code=200, data={"test_log": test_log, "img": img, "result_mark": result_mark, "result_note": result_note}))
                 except:
-                    traceback.print_exc()
+                    self.logger.error(traceback.format_exc())
             # 获取某个测试任务的详情
             elif get_task_info:
                 task_info = self.get_task_info(task_id)
                 self.write(str(task_info.get(get_task_info, task_info)).strip())
+                self.write(response(code=200, desc=str(task_info.get(get_task_info, task_info)).strip()))
             # 打开测试结果展示页面
             else:
                 try:
@@ -61,16 +62,26 @@ class TaskPlan(BaseHandler):
                     device_list = self.get_task_devices(task_id, task_date)
                     task_result_data, task_result_info = self.get_task_result(task_id, task_date, task_date_prev,device_list)
                     case_id_list = self.get_task_cases_id(task_id)
-                    self.render(report_html, device_list=device_list, case_id_list=case_id_list, task_result_data=task_result_data, task_result_info=task_result_info, date_list=task_date_list[::-1])
+                    # self.render(report_html, device_list=device_list, case_id_list=case_id_list, task_result_data=task_result_data, task_result_info=task_result_info, date_list=task_date_list[::-1])
+                    self.write(response(code=200, data={"device_list": device_list, "case_id_list":case_id_list, "task_result_data": task_result_data,
+                                                       "task_result_info": task_result_info, "date_list":task_date_list[::-1]}))
                 except Exception as e:
-                    self.write(response({"error": traceback.format_exc()}))
+                    self.write(response(code=400, desc=traceback.format_exc()))
 
-        #显示任务创建主页
-        else:
-            case_domain_map, case_id_map = self.get_case_map()
-            task_list = self.get_task_list()
-            self.render("display/task_plane.html", apk_list=CONST.APP_DICT, case_domain_map=case_domain_map,
-                        case_id_map=case_id_map, task_list=task_list)
+        # 获取数据
+        query = self.get_query_argument("query", "")
+        if query:
+            apk = self.get_query_argument("apk", "")
+            data = {}
+            if "task_list" in query or query == "all":
+                data["task_list"] = self.get_task_list()
+            if "apk_map" in query or query == "all":
+                data["apk_map"] = CONST.APP_DICT
+            if "case_domain_map" in query or query == "all":
+                case_domain_map, case_id_map = self.get_case_map(apk=apk, table=CONST.APK_TABLE_DICT.get(apk, ""))
+                data["case_domain_map"] = case_domain_map
+                data["case_id_map"] = case_id_map
+            self.write(response(code=200, data=data))
 
     @gen.coroutine
     def post(self):
@@ -220,19 +231,28 @@ class TaskPlan(BaseHandler):
         '''
         return self.get_task_info(task_id).get("case_list", [])
 
-    def get_case_map(self):
-        case_suit_map = {}
+    def get_case_map(self, apk="", table=""):
+        case_domain_map = {}
         case_id_map = {}
-        for apk, table in CONST.APK_TABLE_DICT.items():
-            _domain_list = self.mongo_client.distinct(table, "domain", {})
-            domain_list = [d.get("domain") for d in _domain_list]
+        if apk and table:
+            domain_list = self.mongo_client.distinct(table, "domain", {})
             for item in domain_list:
                 _domain = item
-                _case_list = self.mongo_client.find(table, {"domain": _domain, "flag":1}, {"id":""})
-                case_list = [cs.get("id") for cs in _case_list]
-                case_id_map[apk + "_" + _domain] = case_list
-            case_suit_map[apk] = domain_list
-        return case_suit_map, case_id_map
+                _case_list = self.mongo_client.find(table, {"domain": _domain, "flag": 1})
+                case_id_list = [cs.get("id") for cs in _case_list]
+                case_id_map[_domain] = case_id_list
+            case_domain_map[apk] = domain_list
+        return case_domain_map, case_id_map
+
+        # for apk, table in CONST.APK_TABLE_DICT.items():
+        #     domain_list = self.mongo_client.distinct(table, "domain", {})
+        #     for item in domain_list:
+        #         _domain = item
+        #         _case_list = self.mongo_client.find(table, {"domain": _domain, "flag": 1})
+        #         case_id_list = [cs.get("id") for cs in _case_list]
+        #         case_id_map[apk + "_" + _domain] = case_id_list
+        #     case_domain_map[apk] = domain_list
+        # return case_domain_map, case_id_map
 
     def get_task_devices(self, task_id, task_date) -> list:
         '''

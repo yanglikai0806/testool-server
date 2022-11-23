@@ -17,10 +17,14 @@ from apscheduler.schedulers.tornado import TornadoScheduler
 
 from common.mongo_client import MongoClient
 from handlers import *
+from handlers.BaseActionMap import BaseActionMap
+from handlers.BaseCheckpointMap import BaseCheckpointMap
 from handlers.DeviceDump import DeviceDump
 from handlers.DeviceRemote import DeviceRemote
 from handlers.DeviceState import DeviceState
 from handlers.LogHandler import LogHandler
+from handlers.TaskEngine import TaskEngine
+from handlers.TaskPlan import TaskPlan
 from handlers.TestCases import TestCases
 from handlers.DeviceManager import DeviceManager
 
@@ -71,10 +75,22 @@ class Application(tornado.web.Application):
     def __init__(self):
         self.base_url = r"/test/"
         handlers = [
+            # 测试用例
             (self.base_url + r"cases", TestCases, {"mongo_client": mongo_client, "logger": logger}),
+            # 测试设备
             (self.base_url + r"devices", DeviceManager, {"mongo_client": mongo_client, "logger": logger}),
+            # 设备远程
             (self.base_url + r"device_remote", DeviceRemote),
             (self.base_url + r"device_dump", DeviceDump, {"mongo_client": mongo_client, "logger": logger}),
+            # 测试计划
+            (self.base_url + r"task_plan", TaskPlan, {"mongo_client": mongo_client, "logger": logger}),
+            # 测试执行引擎
+            (self.base_url + r"task_engine", TaskEngine, {"mongo_client": mongo_client, "logger": logger}),
+            # 基础操作库
+            (self.base_url + r"action_map", BaseActionMap, {"mongo_client": mongo_client, "logger": logger}),
+            # 基础检查库
+            (self.base_url + r"check_map", BaseCheckpointMap, {"mongo_client": mongo_client, "logger": logger}),
+
             # API接口实现
             (self.base_url + r"api/device_state", DeviceState, {"mongo_client": mongo_client, "logger": logger}),
             # 日志查看接口
