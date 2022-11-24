@@ -25,11 +25,11 @@ class DeviceState(BaseHandler):
         try:
             # self.logger.info(json.dumps(self.request.body.decode('utf-8'), ensure_ascii=False))
             rep_str = self.save_device_state(self.request.body.decode('utf-8'))
-            # self.logger.info('query[%s]  处理时间 time[%s]' % (self.request.full_url, self.request.request_time()))
+            self.logger.info('query[%s]  处理时间 time[%s]' % (self.request.full_url, self.request.request_time()))
             self.write(response(desc=rep_str, code=200))
         except Exception as e:
-            self.logger.error(e)
-            self.write(response(desc="error:" + str(e), code=400))
+            self.logger.error(traceback.format_exc())
+            self.write(response(desc=traceback.format_exc(), code=400))
 
     def save_device_state(self, post_data):
         # 检查基本数据结构

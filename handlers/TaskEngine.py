@@ -1,6 +1,3 @@
-# @Date : 2021/4/14
-# @Author : 杨立凯
-# @description : 测试任务执行
 import copy
 import json
 import time
@@ -17,7 +14,6 @@ class TaskEngine(BaseHandler):
         self.mongo_client = mongo_client if mongo_client is not None else MongoClient()
         self.conf = conf
         self.sql_test_result = mongo_client
-        self.update_lock = False
 
     @gen.coroutine
     def get(self):
@@ -25,9 +21,8 @@ class TaskEngine(BaseHandler):
         获得测试用例
         :return:
         '''
-        task_id = self.get_query_argument("task_id")
+        task_id = int(self.get_query_argument("task_id", "0"))
         result = self.get_query_argument("result", "")
-        print("result", result)
         device_id = self.get_query_argument("device_id", "")
         task_date = self.get_query_argument("task_date", "")
         try:
@@ -40,6 +35,7 @@ class TaskEngine(BaseHandler):
             else:
                 msg = {"code": 200, "description": "finished", "data": []}
         except Exception as e:
+            self.logger.error(traceback.format_exc())
             msg = {"code": 400, "description": "error", "error": traceback.format_exc()}
         self.write(json.dumps(msg, ensure_ascii=False))
 
@@ -57,11 +53,10 @@ class TaskEngine(BaseHandler):
             result["apk_version"] = _data.get("apk_version", "")
             result["task_id"] = _data.get("task_id", 0)
             result["task_date"] = _data.get("test_date", "")
-            result["task_env"] = _data.get("environment", "")
+            result["task_env"] = _data.get("test_env", "")
             # case_content = post_data.get("test_case", "")
             result["device_id"] = _data.get("device_id", "")
             result["device_name"] = _data.get("device_name", "")
-
             result["case_id"] = post_data.get("case_id", 0)
             result["test_log"] = post_data.get("test_log", "")
             result["test_result"] = _dict[post_data.get("test_result", -1)]
@@ -94,8 +89,8 @@ class TaskEngine(BaseHandler):
         '''
         try:
             if not result:
-                res_data = self.mongo_client.find("task_case", {"task_id": task_id, "task_date": task_date}, {"case_list": ""})
-                case_lst = eval(res_data)
+                res_data = self.mongo_client.find("task_case", {"task_id": task_id, "task_date": task_date})
+                case_lst = res_data[-1].get("case_list", [])
             else:
                 case_lst = self.get_cases_by_result(task_id, result=result, device_id=device_id, task_date=task_date)
         except:
@@ -103,11 +98,11 @@ class TaskEngine(BaseHandler):
         return case_lst
 
     def get_cases_by_result(self, task_id, result="", device_id="", task_date=""):
-        res_data = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date, "device_id": device_id, "result": result}, {"case_id":""})
+        res_data = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date, "device_id": device_id, "result": result})
         case_lst = [item.get("case_id") for item in res_data]
         return case_lst
 
-    def update_case_by_id(self, task_id, task_date, case_list):
+    def update_task_case_by_id(self, task_id, task_date, case_list):
         '''
         分布式执行模式下更新任务执行列表
         :param task_id:
@@ -115,24 +110,16 @@ class TaskEngine(BaseHandler):
         :param case_list:
         :return:
         '''
-        while True:
-            if not self.update_lock:
-                self.update_lock = True
-                try:
-                    self.mongo_client.update("task_case", {"task_id": task_id, "task_date": task_date}, {"case_list": case_list})
-                except:
-                    self.logger.error(traceback.format_exc())
-                finally:
-                    self.update_lock = False
-                    break
-            else:
-                time.sleep(5)
 
+        try:
+            self.mongo_client.update("task_case", {"task_id": task_id, "task_date": task_date}, {"case_list": case_list})
+        except:
+            self.logger.error(traceback.format_exc())
 
     def get_test_date_task_id(self, task_id):
         try:
             res_data = self.mongo_client.find("task_case", {"task_id": task_id})
-            test_date = res_data.get("task_date")
+            test_date = res_data[-1].get("task_date")
         except:
             test_date = ""
         return test_date
@@ -143,7 +130,7 @@ class TaskEngine(BaseHandler):
         # self.logger.info(case_list)
 
         task_mode = self.get_task_info(task_id, "task_mode")
-        self.logger.info("目前的任务模式是" + task_mode)
+        self.logger.info("目前的任务模式是:" + task_mode)
         task_env = self.get_task_info(task_id, "task_env")
         task_apk = self.get_task_info(task_id, "apk")
         if case_list:
@@ -153,27 +140,27 @@ class TaskEngine(BaseHandler):
                 return task_case_list, task_mode
             elif task_mode == "分布":  # 多个设备分布执行一个用例集合
                 if len(case_list) > 10:
-                    self.update_case_by_id(task_id, task_date, case_list[10:])
+                    self.update_task_case_by_id(task_id, task_date, case_list[10:])
                     task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list[:10], task_date, task_env,
                                                     task_id)
                     return task_case_list, task_mode
                 else:
-                    self.update_case_by_id(task_id, task_date, [])  # 用例清空
+                    self.update_task_case_by_id(task_id, task_date, [])  # 用例清空
                     task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list, task_date, task_env,
                                                     task_id)
                     return task_case_list, task_mode
             elif task_mode == "自动":
                 task_condition = self.get_task_info(task_id, "task_condition")
                 self.logger.info("目前的任务模式是" + task_condition)
-                if eval(task_condition).get("task_mode", "") == "分布":
+                if task_condition.get("task_mode", "") == "分布":
                     if len(case_list) > 10:
-                        self.update_case_by_id(task_id, task_date, case_list[10:])
+                        self.update_task_case_by_id(task_id, task_date, case_list[10:])
                         task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list[:10], task_date,
                                                         task_env,
                                                         task_id)
                         return task_case_list, "分布"
                     else:
-                        self.update_case_by_id(task_id, task_date, [])  # 用例清空
+                        self.update_task_case_by_id(task_id, task_date, [])  # 用例清空
                         task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list, task_date, task_env,
                                                         task_id)
                         return task_case_list, "分布"
@@ -185,18 +172,18 @@ class TaskEngine(BaseHandler):
             return None, None
 
     def get_task_info(self, task_id, info):
-        res_data = self.mongo_client.find("task_plan", {"task_id": task_id})
-        return res_data.get(info)
+        res_data = self.mongo_client.find("task_plan", {"id": task_id})
+        return res_data[-1].get(info, "") if res_data else ""
 
     def gen_cases(self, table, case_list, test_date, test_env, task_id):
         cases = []
         for _id in case_list:
-            result_list = self.mongo_client.find(table, {"id": id, "flag":1})
+            result_list = self.mongo_client.find(table, {"id": int(_id), "flag": 1})
             if result_list:
                 item = result_list[0]
             else:
                 continue
-            domain = item[1]
+            domain = item.get("domain", "")
             case_content = {
                 "environment": test_env,
                 "test_date": test_date,
@@ -205,9 +192,9 @@ class TaskEngine(BaseHandler):
                 "test_case": {
                     'id': item.get("id"),
                     'domain': domain,
-                    'case': json.loads(item.get("case_body")),
-                    'check_point': json.loads(item.get("check_point")),
-                    'skip_condition': json.loads(item.get("skip_condition", {}))
+                    'case': item.get("case", {}),
+                    'check_point': item.get("check_point", {}),
+                    'skip_condition': item.get("skip_condition", {})
                 }
             }
             cases.append(case_content)

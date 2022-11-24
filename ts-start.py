@@ -27,6 +27,7 @@ from handlers.TaskEngine import TaskEngine
 from handlers.TaskPlan import TaskPlan
 from handlers.TestCases import TestCases
 from handlers.DeviceManager import DeviceManager
+from handlers.UploadFile import UploadFile
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -93,6 +94,7 @@ class Application(tornado.web.Application):
 
             # API接口实现
             (self.base_url + r"api/device_state", DeviceState, {"mongo_client": mongo_client, "logger": logger}),
+            (self.base_url + r"api/upload", UploadFile, {"logger": logger, "conf": conf}),
             # 日志查看接口
             (r"/test/log", LogHandler),
         ]
@@ -114,7 +116,7 @@ class Application(tornado.web.Application):
 def start_crontab():
     pass
     # time.sleep(60)
-    # url_task = "http://%s:%s/test/task_plane?add_jobs=yes" % (host, port)
+    # url_task = "http://%s:%s/test/task_plan?add_jobs=yes" % (host, port)
     # res = requests.get(url_task)
     # time.sleep(1)
     # logger.info("启动定时任务 %s" % res.text)
