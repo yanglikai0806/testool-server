@@ -87,13 +87,14 @@ class TaskPlan(BaseHandler):
     def post(self):
         '''
         任务创建
-        {"apk_name":"", "case_id_list":[], "task_mode":"a/b", "task_id":""}
+        {"apk_name":"", "case_list":[], "task_mode":"", "task_id":""}
         :return:
         '''
         _data = json.loads(self.request.body.decode('utf-8'))
         post_data = _data.get("data", {})
-        apk_name = post_data.get("apk_name", "")
+        apk_name = post_data.get("apk", "")
         case_list = post_data.get("case_list", [])
+        case_map = post_data.get("case_map", {})
         task_mode = post_data.get("task_mode", "全量")
         task_env = post_data.get("task_env", "production")
         task_owner = post_data.get("task_owner", "")
@@ -103,7 +104,7 @@ class TaskPlan(BaseHandler):
         task_id = int(post_data.get("task_id", -1))
         if task_id == -1:
             try:
-                self.create_task({"apk": apk_name, "case_list": case_list, "task_mode": task_mode, "task_env": task_env,
+                self.create_task({"apk": apk_name, "case_list": case_list, "case_map": case_map,"task_mode": task_mode, "task_env": task_env,
                                   "task_owner": task_owner, "task_note": task_note, "task_status": 0})
                 msg = {"code": 200, "desc": "新建创建完成"}
             except Exception as e:
@@ -121,22 +122,23 @@ class TaskPlan(BaseHandler):
                     else:
                         msg = {"code": 200, "desc": "测试用例为空"}
                 elif task_status == -1:  # 删除任务
+                    self.modify_task(task_id, {"task_status": -1})
                     msg = {"code": 200, "desc": "任务已删除"}
-                elif task_status == 2 and task_mode == "自动":  # 任务完成，只实现条件模式下任务终止，对于普通任务只更新状态，无需操作
-                    try:
-                        self.scheduler.remove_job(str(task_id))
-                    except Exception as e:
-                        self.logger.error(traceback.format_exc())
-                    msg = {"code": 200, "desc": "任务已终止"}
-                elif task_status == 3:  # 更新任务
-                    if case_list:
-                        self.update_task_case(task_id, case_list)
-                        msg = {"code": 200, "desc": "更新任务用例"}
-                    elif task_condition:
-                        self.update_task_condition(task_id, str(task_condition))
-                        msg = {"code": 200, "desc": "更新任务条件"}
+                elif task_status == 2:
+                    if task_mode == "自动":  # 任务完成，只实现条件模式下任务终止，对于普通任务只更新状态，无需操作
+                        try:
+                            self.scheduler.remove_job(str(task_id))
+                        except Exception as e:
+                            self.logger.error(traceback.format_exc())
                     else:
-                        msg = {"code": 200, "desc": "不支持更新的数据"}
+                        self.modify_task(task_id, {"task_status": 2})
+                    msg = {"code": 200, "desc": "任务已终止"}
+                elif task_status == 3:  # 编辑任务
+                    modify_data = {"apk": apk_name, "case_list": case_list, "case_map": case_map, "task_mode": task_mode, "task_env": task_env,
+                                  "task_owner": task_owner, "task_note": task_note}
+                    self.modify_task(task_id, modify_data)
+                    msg = {"code": 200, "desc": "更新任务"}
+
                 else:
                     msg = {"code": 200, "desc": "无实现"}
                 self.update_task_status(task_id, task_status)
@@ -162,6 +164,9 @@ class TaskPlan(BaseHandler):
         }
 
         return self.mongo_client.insert(self.table_task_plan, data_body)
+
+    def modify_task(self, task_id, data_modify: dict):
+        return self.mongo_client.update(self.table_task_plan, {"id": task_id}, data_modify)
 
     def update_task_status(self, task_id, status):
         '''
@@ -205,7 +210,7 @@ class TaskPlan(BaseHandler):
 
     def insert_task_case_table(self, task_id, case_list):
         task_date = time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.mongo_client.insert(self.table_task_case, {"task_id": task_id, "task_date": task_date, "case_list": case_list, "case_num": len(eval(case_list))})
+        self.mongo_client.insert(self.table_task_case, {"task_id": task_id, "task_date": task_date, "case_list": case_list, "case_num": len(case_list)})
 
     def get_task_list(self):
         '''
