@@ -64,9 +64,9 @@ class BaseActionMap(BaseHandler):
         return res_data
 
     def get_action_by_id(self, id):
-        res_data = self.mongo_client.find("action_map", {"id": id}, {"action": ""})
-        return res_data[-1] if res_data else ""
+        res_data = self.mongo_client.find("action_map", {"id": id})
+        return res_data[-1].get("action", "") if res_data else ""
 
     def get_action_by_name(self, tag):
-        res_data = self.mongo_client.find("action_map", {"name": tag}, {"action": ""})
-        return res_data[-1] if res_data else ""
+        res_data = self.mongo_client.find("action_map", {"name": tag})
+        return res_data[-1].get("action", "") if res_data else ""

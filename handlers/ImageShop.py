@@ -6,7 +6,7 @@ import os
 import traceback
 
 from common.mongo_client import MongoClient
-from handlers import BaseHandler
+from handlers import BaseHandler, response
 import tornado
 
 class ImageShop(BaseHandler):
@@ -37,7 +37,7 @@ class ImageShop(BaseHandler):
                 self.write(json.dumps({"code": 200, "desc": "tag不存在"}, ensure_ascii=False))
             return
         self.logger.info('query[%s]  处理时间 time[%s]' % (self.request.full_url, self.request.request_time()))
-        self.render("display/image_shop.html", image_list=self.get_image_lst())
+        self.write(response(data=self.get_image_lst()))
 
     def post(self):
         try:
@@ -62,7 +62,7 @@ class ImageShop(BaseHandler):
         return image_lst
 
     def store_image_data(self, id, image, tag):
-        res_data = self.mongo_client.update("image_shop", {"id": id}, {"id": id, "image": image, "tag": tag})
+        res_data = self.mongo_client.update("image_shop", {"id": id}, {"image": image, "tag": tag})
         return res_data
 
     def get_image_by_id(self, id):

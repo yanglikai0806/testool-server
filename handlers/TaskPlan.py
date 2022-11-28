@@ -28,7 +28,7 @@ class TaskPlan(BaseHandler):
         self.table_task_plan = "task_plan"
         self.table_task_case = "task_case"
     def get(self):
-        task_id = self.get_query_argument("task_id", "")
+        task_id = int(self.get_query_argument("task_id", "0"))
         task_date = self.get_query_argument("task_date", "")
         case_id = self.get_query_argument("case_id", "")
         device_id = self.get_query_argument("device_id", "")
@@ -56,16 +56,17 @@ class TaskPlan(BaseHandler):
             # 打开测试结果展示页面
             else:
                 try:
-                    report_html = "display/task_report.html"
+                    report_html = "task_report.html"
                     if not task_date:
                         task_date = task_date_list[-1] if task_date_list else ""
                     device_list = self.get_task_devices(task_id, task_date)
                     task_result_data, task_result_info = self.get_task_result(task_id, task_date, task_date_prev,device_list)
                     case_id_list = self.get_task_cases_id(task_id)
-                    # self.render(report_html, device_list=device_list, case_id_list=case_id_list, task_result_data=task_result_data, task_result_info=task_result_info, date_list=task_date_list[::-1])
-                    self.write(response(code=200, data={"device_list": device_list, "case_id_list":case_id_list, "task_result_data": task_result_data,
-                                                       "task_result_info": task_result_info, "date_list":task_date_list[::-1]}))
+                    self.render(report_html, device_list=device_list, case_id_list=case_id_list, task_result_data=task_result_data, task_result_info=task_result_info, date_list=task_date_list[::-1])
+                    # self.write(response(code=200, data={"device_list": device_list, "case_id_list":case_id_list, "task_result_data": task_result_data,
+                    #                                    "task_result_info": task_result_info, "date_list":task_date_list[::-1]}))
                 except Exception as e:
+                    self.logger.error(traceback.format_exc())
                     self.write(response(code=400, desc=traceback.format_exc()))
 
         # 获取数据
@@ -201,12 +202,12 @@ class TaskPlan(BaseHandler):
         :param task_id:
         :return:
         '''
-        dt_lst = []
+        res_lst = []
         try:
-            dt_lst = self.mongo_client.find(self.table_task_plan, {"id": task_id}, {"task_date": ""})
+            res_lst = self.mongo_client.find(self.table_task_plan, {"id": task_id})
         except:
             self.logger.error(traceback.format_exc())
-        return dt_lst
+        return [res.get("task_date", "") for res in res_lst]
 
     def insert_task_case_table(self, task_id, case_list):
         task_date = time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -226,7 +227,7 @@ class TaskPlan(BaseHandler):
         :return:
         '''
         task_info = self.mongo_client.find(self.table_task_plan, {"id": task_id})
-        return task_info[0]
+        return task_info[0] if task_info else ""
 
     def get_task_cases_id(self, task_id) -> list:
         '''
@@ -281,9 +282,9 @@ class TaskPlan(BaseHandler):
         :return:
         '''
         if test_result:
-            res = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date, "test_result": test_result}, {"case_id": ""})
+            res = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date, "test_result": test_result})
         else:
-            res = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date}, {"case_id": ""})
+            res = self.mongo_client.find("task_result", {"task_id": task_id, "task_date": task_date})
 
         try:
             cases_id_lst = [_id.get("case_id") for _id in res]
