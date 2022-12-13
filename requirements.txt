@@ -1,5 +1,4 @@
 APScheduler==3.9.1
-ConcurrentLogHandler==0.9.1
 numpy==1.23.2
 opencv-python==4.6.0.66
 pymongo==4.2.0
