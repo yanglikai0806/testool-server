@@ -32,6 +32,8 @@ class TaskEngine(BaseHandler):
                 msg = {"code": 200, "description": "finished", "data": task_data}
             elif task_mode == "分布":
                 msg = {"code": 200, "description": "continue", "data": task_data}
+            elif task_mode == "调试":
+                msg = {"code": 200, "description": "debug", "data": task_data}
             else:
                 msg = {"code": 200, "description": "finished", "data": []}
         except Exception as e:
@@ -88,6 +90,10 @@ class TaskEngine(BaseHandler):
         :return:
         '''
         try:
+            # 调试任务
+            if task_id == -1:
+                return self.mongo_client.find("debug_case", {"device_id": device_id})
+            # 测试任务
             if not result:
                 res_data = self.mongo_client.find("task_case", {"task_id": task_id, "task_date": task_date})
                 case_lst = res_data[-1].get("case_list", [])
@@ -117,6 +123,11 @@ class TaskEngine(BaseHandler):
             self.logger.error(traceback.format_exc())
 
     def get_test_date_task_id(self, task_id):
+        """
+        根据测试task_id 获取最近一次任务的 date
+        :param task_id:
+        :return:
+        """
         try:
             res_data = self.mongo_client.find("task_case", {"task_id": task_id})
             test_date = res_data[-1].get("task_date")
@@ -125,6 +136,9 @@ class TaskEngine(BaseHandler):
         return test_date
 
     def task_engine(self, task_id, result="", device_id="", task_date=""):
+        if task_id == -1:
+            debug_case = self.get_case_by_task_id(task_id, device_id=device_id)
+            return debug_case, "调试"
         task_date = self.get_test_date_task_id(task_id) if not task_date else task_date
         case_list = self.get_case_by_task_id(task_id, result=result, device_id=device_id, task_date=task_date)  # 任务的id
         # self.logger.info(case_list)
@@ -138,7 +152,7 @@ class TaskEngine(BaseHandler):
             if task_mode == "全量":  # 每个设备跑全部用例
                 task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list, task_date, task_env, task_id)
                 return task_case_list, task_mode
-            elif task_mode == "分布":  # 多个设备分布执行一个用例集合
+            elif task_mode == "分布":  # 多个设备分布执行一个用例集合ff
                 if len(case_list) > 10:
                     self.update_task_case_by_id(task_id, task_date, case_list[10:])
                     task_case_list = self.gen_cases(CONST.APK_TABLE_DICT[task_apk], case_list[:10], task_date, task_env,
