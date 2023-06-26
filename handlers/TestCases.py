@@ -13,15 +13,24 @@ class TestCases(BaseHandler):
         try:
             self.logger.info(self.request.full_url)
             table = self.get_query_argument("table", 'test_cases')
-            domain = self.get_query_argument("domain", '')
-            domain = '' if domain == 'all' else domain
             flag = self.get_query_argument("flag", "1")
-            find_dict = {"domain": domain, "flag": int(flag)} if domain else {"flag": int(flag)}
-            _id = self.get_query_argument("id", "")
-            if _id:
-                find_dict["id"] = int(_id)
-            case_dict = self.get_cases(table, find_dict)
-            self.write(response(data=case_dict, desc="ok"))
+            domain_list = self.get_query_argument("domain_list")
+            if domain_list:
+                domain_set = []
+                for case in self.get_cases(table, {"flag": int(flag)}):
+                    _domain = case.get("domain", "None")
+                    domain_set.append(_domain)
+                self.write(response(data=list(set(domain_set)), desc="ok"))
+            else:
+                domain = self.get_query_argument("domain", '')
+                domain = '' if domain == 'all' else domain
+
+                find_dict = {"domain": domain, "flag": int(flag)} if domain else {"flag": int(flag)}
+                _id = self.get_query_argument("id", "")
+                if _id:
+                    find_dict["id"] = int(_id)
+                case_dict = self.get_cases(table, find_dict)
+                self.write(response(data=case_dict, desc="ok"))
         except Exception as e:
             self.logger.error(e)
             self.logger.error(traceback.format_exc())
