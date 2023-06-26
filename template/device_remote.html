@@ -184,7 +184,7 @@
                 let content = JSON.stringify(
                 {device_id:device_id, device_ip:ip, idle:"false"}, null, 2
                 );
-                $.post("/test/device_state", content, function(data, status){
+                $.post("/test/api/device_state", content, function(data, status){
                     if(status === "success"){
                         // console.log(data);
                     } else {
@@ -198,7 +198,7 @@
                 let content = JSON.stringify(
                 {device_id:device_id, device_ip:ip, idle:"true"}, null, 2
                 );
-                $.post("/test/device_state", content, function(data, status){
+                $.post("/test/api/device_state", content, function(data, status){
                     if(status === "success"){
                         // console.log(data);
                     } else {
