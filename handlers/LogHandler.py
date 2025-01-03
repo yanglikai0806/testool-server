@@ -1,6 +1,3 @@
-# @Date : 2021/2/19
-# @Author : 杨立凯
-# @description : activity 展示列表
 import json
 import os
 import traceback

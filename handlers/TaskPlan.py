@@ -1,6 +1,3 @@
-# @Date : 2021/4/14
-# @Author : 杨立凯
-# @description : 测试计划创建
 import json
 import os
 import re
