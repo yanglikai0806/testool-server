@@ -22,6 +22,7 @@ from handlers.BaseCheckpointMap import BaseCheckpointMap
 from handlers.DeviceDump import DeviceDump
 from handlers.DeviceRemote import DeviceRemote
 from handlers.DeviceState import DeviceState
+from handlers.ImageShop import ImageShop
 from handlers.LogHandler import LogHandler
 from handlers.TaskEngine import TaskEngine
 from handlers.TaskPlan import TaskPlan
@@ -91,6 +92,8 @@ class Application(tornado.web.Application):
             (self.base_url + r"action_map", BaseActionMap, {"mongo_client": mongo_client, "logger": logger}),
             # 基础检查库
             (self.base_url + r"check_map", BaseCheckpointMap, {"mongo_client": mongo_client, "logger": logger}),
+            # 图像资源库
+            (self.base_url + r"image", ImageShop, {"mongo_client": mongo_client, "logger": logger, "conf": conf}),
 
             # API接口实现
             (self.base_url + r"api/device_state", DeviceState, {"mongo_client": mongo_client, "logger": logger}),
